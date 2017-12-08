@@ -20,7 +20,6 @@ import * as ReactDOMFiberSelect from './ReactDOMFiberSelect';
 import * as ReactDOMFiberTextarea from './ReactDOMFiberTextarea';
 import * as inputValueTracking from './inputValueTracking';
 import setInnerHTML from './setInnerHTML';
-import setTextContent from './setTextContent';
 import {listenTo, trapBubbledEvent} from '../events/ReactBrowserEventEmitter';
 import * as CSSPropertyOperations from '../shared/CSSPropertyOperations';
 import {Namespaces, getIntrinsicNamespace} from '../shared/DOMNamespaces';
@@ -292,12 +291,11 @@ function setInitialDOMProperties(
         // textContent on a <textarea> will cause the placeholder to not
         // show within the <textarea> until it has been focused and blurred again.
         // https://github.com/facebook/react/issues/6731#issuecomment-254874553
-        const canSetTextContent = tag !== 'textarea' || nextProp !== '';
-        if (canSetTextContent) {
-          setTextContent(domElement, nextProp);
+        if (tag !== 'textarea' || nextProp !== '') {
+          domElement.textContent = nextProp;
         }
       } else if (typeof nextProp === 'number') {
-        setTextContent(domElement, '' + nextProp);
+        domElement.textContent = '' + nextProp;
       }
     } else if (
       propKey === SUPPRESS_CONTENT_EDITABLE_WARNING ||
@@ -340,7 +338,7 @@ function updateDOMProperties(
     } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
       setInnerHTML(domElement, propValue);
     } else if (propKey === CHILDREN) {
-      setTextContent(domElement, propValue);
+      domElement.textContent = propValue;
     } else if (isCustomComponentTag) {
       if (propValue != null) {
         DOMPropertyOperations.setValueForAttribute(
