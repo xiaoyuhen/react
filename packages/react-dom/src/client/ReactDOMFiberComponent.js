@@ -668,7 +668,7 @@ export function diffProperties(
   }
   for (propKey in nextProps) {
     const nextProp = nextProps[propKey];
-    const lastProp = lastProps != null ? lastProps[propKey] : undefined;
+    const lastProp = lastProps[propKey];
     if (
       !nextProps.hasOwnProperty(propKey) ||
       nextProp === lastProp ||
