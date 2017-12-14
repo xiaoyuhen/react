@@ -146,6 +146,7 @@ export default function(
     },
   };
 
+  // 检查是否经过 ShouldComponentUpdate 生命周期
   function checkShouldComponentUpdate(
     workInProgress,
     oldProps,
@@ -154,6 +155,9 @@ export default function(
     newState,
     newContext,
   ) {
+    // 如果 oldProps(this.props) 为 null，则肯定会经过该生命周期（什么时候 this.props 为 null呢）
+    // oldState 不会为 null 吗
+    // workInProgress 不太清楚具体含义
     if (
       oldProps === null ||
       (workInProgress.updateQueue !== null &&
@@ -165,8 +169,12 @@ export default function(
 
     const instance = workInProgress.stateNode;
     const type = workInProgress.type;
+    // 判断是否写了 shouldComponentUpdate 生命周期，不写默认该生命周期返回 true
     if (typeof instance.shouldComponentUpdate === 'function') {
+      // dev 环境下调用 timing api，进行性能分析
       startPhaseTimer(workInProgress, 'shouldComponentUpdate');
+      // 传入 newProps, newState, newContext(貌似很少用到)
+      // https://github.com/facebook/react/issues/2517
       const shouldUpdate = instance.shouldComponentUpdate(
         newProps,
         newState,
@@ -180,6 +188,8 @@ export default function(
       }
 
       if (__DEV__) {
+        // shouldComponentUpdate 未返回 boolean 时进行 warning 提示
+        // 为什么判断 不等于 underfined？
         warning(
           shouldUpdate !== undefined,
           '%s.shouldComponentUpdate(): Returned undefined instead of a ' +
@@ -191,7 +201,9 @@ export default function(
       return shouldUpdate;
     }
 
+    // 判断该组件是否是 PureComponent
     if (type.prototype && type.prototype.isPureReactComponent) {
+      // 当组件为 PureComponent 时对 props 和 state 进行浅比较
       return (
         !shallowEqual(oldProps, newProps) || !shallowEqual(oldState, newState)
       );
@@ -200,14 +212,16 @@ export default function(
     return true;
   }
 
+  // 检查一些 react class 中默认会有的实例
   function checkClassInstance(workInProgress: Fiber) {
     const instance = workInProgress.stateNode;
     const type = workInProgress.type;
     if (__DEV__) {
       const name = getComponentName(workInProgress);
       const renderPresent = instance.render;
-
+      // 如果无法渲染出组件，进行下面的操作
       if (!renderPresent) {
+        // 当有 render 函数时，提示可能没有 return 一个 object（virual dom 就是一个 plain old js object）
         if (type.prototype && typeof type.prototype.render === 'function') {
           warning(
             false,
@@ -216,6 +230,7 @@ export default function(
             name,
           );
         } else {
+          // 否则提示用户是否忘记了些 render 函数。
           warning(
             false,
             '%s(...): No `render` method found on the returned component ' +
@@ -225,10 +240,12 @@ export default function(
         }
       }
 
+      // createClass 时代的一些废弃 api，如果仍旧使用，则报错
       const noGetInitialStateOnES6 =
         !instance.getInitialState ||
         instance.getInitialState.isReactClassApproved ||
         instance.state;
+      // react class 组件中写了 getInitialState 方法(为何判断两次)，则提示用户使用 state propperty
       warning(
         noGetInitialStateOnES6,
         'getInitialState was defined on %s, a plain JavaScript class. ' +
@@ -236,6 +253,7 @@ export default function(
           'Did you mean to define a state property instead?',
         name,
       );
+      // react class 组件中写了 getDefaultProps 方法，则提示用户使用 static
       const noGetDefaultPropsOnES6 =
         !instance.getDefaultProps ||
         instance.getDefaultProps.isReactClassApproved;
@@ -247,6 +265,7 @@ export default function(
         name,
       );
       const noInstancePropTypes = !instance.propTypes;
+      // React.PropTypes 已经被弃用，如果仍旧使用，进行提示
       warning(
         noInstancePropTypes,
         'propTypes was defined as an instance property on %s. Use a static ' +
@@ -254,6 +273,7 @@ export default function(
         name,
       );
       const noInstanceContextTypes = !instance.contextTypes;
+      // React.contextTypes 已经被弃用，如果仍旧使用，进行提示
       warning(
         noInstanceContextTypes,
         'contextTypes was defined as an instance property on %s. Use a static ' +
@@ -262,6 +282,7 @@ export default function(
       );
       const noComponentShouldUpdate =
         typeof instance.componentShouldUpdate !== 'function';
+      // shouldComponentUpdate 写成 componentShouldUpdate 时提示
       warning(
         noComponentShouldUpdate,
         '%s has a method called ' +
@@ -275,6 +296,7 @@ export default function(
         type.prototype.isPureReactComponent &&
         typeof instance.shouldComponentUpdate !== 'undefined'
       ) {
+        // PureComponent 时不能再使用 shouldComponentUpdate，否则提示（坚持使用是否能生效？）
         warning(
           false,
           '%s has a method called shouldComponentUpdate(). ' +
@@ -285,6 +307,7 @@ export default function(
       }
       const noComponentDidUnmount =
         typeof instance.componentDidUnmount !== 'function';
+      // componentWillUnmount 写成了 componentDidUnmount
       warning(
         noComponentDidUnmount,
         '%s has a method called ' +
@@ -294,6 +317,7 @@ export default function(
       );
       const noComponentDidReceiveProps =
         typeof instance.componentDidReceiveProps !== 'function';
+      // componentWillReceiveProps 写成 componentDidReceiveProps 
       warning(
         noComponentDidReceiveProps,
         '%s has a method called ' +
@@ -305,6 +329,7 @@ export default function(
       );
       const noComponentWillRecieveProps =
         typeof instance.componentWillRecieveProps !== 'function';
+      // componentWillReceiveProps 写成了 componentWillRecieveProps
       warning(
         noComponentWillRecieveProps,
         '%s has a method called ' +
@@ -312,6 +337,7 @@ export default function(
         name,
       );
       const hasMutatedProps = instance.props !== workInProgress.pendingProps;
+      // super 里的 props 和设置的 props 不一致
       warning(
         instance.props === undefined || !hasMutatedProps,
         '%s(...): When calling super() in `%s`, make sure to pass ' +
@@ -320,6 +346,7 @@ export default function(
         name,
       );
       const noInstanceDefaultProps = !instance.defaultProps;
+      // 没使用 static defaultProps 而使用了 getDefaultProps 时报错
       warning(
         noInstanceDefaultProps,
         'Setting defaultProps as an instance property on %s is not supported and will be ignored.' +
@@ -329,8 +356,10 @@ export default function(
       );
     }
 
+    // 下面两个提示 生产环境也会 waring
     const state = instance.state;
     if (state && (typeof state !== 'object' || isArray(state))) {
+      // 设置 state 时没有设置成 object 或者 null
       warning(
         false,
         '%s.state: must be set to an object or null',
@@ -338,6 +367,7 @@ export default function(
       );
     }
     if (typeof instance.getChildContext === 'function') {
+      // 使用 childContextTypes 等时没有 getChildContext
       warning(
         typeof workInProgress.type.childContextTypes === 'object',
         '%s.getChildContext(): childContextTypes must be defined in order to ' +

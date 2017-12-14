@@ -315,6 +315,9 @@ export function stopFailedWorkTimer(fiber: Fiber): void {
 }
 
 export function startPhaseTimer(fiber: Fiber, phase: MeasurementPhase): void {
+  // 可以帮助 react 进行性能分析 
+  // https://developer.mozilla.org/en-US/docs/Web/API/User_Timing_API
+  // https://building.calibreapp.com/debugging-react-performance-with-react-16-and-chrome-devtools-c90698a522ad
   if (enableUserTimingAPI) {
     if (!supportsUserTiming) {
       return;
